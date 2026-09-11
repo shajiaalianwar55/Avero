@@ -7,9 +7,14 @@ import { HomeInputSchema, ProfileInputSchema } from '@avero/contracts';
 import { configuredDatabase, HttpError, owned } from './database.js';
 import { body, json } from './http.js';
 import { Diagnosis } from './diagnosis.js';
+import { AI } from './ai.js';
+import { Assessment } from './assessment.js';
+import { acquire } from './serial.js';
 try { process.loadEnvFile('.env'); } catch { /* deployment can supply environment */ }
 const db = configuredDatabase();
 const diagnosis = new Diagnosis(db);
+const ai = new AI(db);
+const assessment = new Assessment(diagnosis,ai);
 const staticFiles: Record<string, [string, string]> = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
 const server = createServer(async (request, response) => {
   try {
@@ -23,6 +28,10 @@ const server = createServer(async (request, response) => {
     const { data, error } = await db.client.auth.getUser(token);
     if (error || !data.user) throw new HttpError(401, 'Session expired. Sign in again.');
     const userId = data.user.id;
+    const release = await acquire(userId);
+    try {
+    const assessmentMatch = path.match(/^\/api\/diagnosis\/([^/]+)\/(next|safety-check|classify)$/);
+    if (assessmentMatch && request.method === 'POST') { const id = assessmentMatch[1]!; return json(response,200,await (assessmentMatch[2]==='next' ? assessment.next(id,userId) : assessmentMatch[2]==='classify' ? assessment.classify(id,userId) : assessment.safety(id,userId))); }
     if (path === '/api/diagnosis/sessions' && request.method === 'POST') { const result = await diagnosis.start(userId, await body(request)); return json(response,201,{...result,diagnosis_session_id:result.id,normalized_initial_complaint:result.payload.complaint}); }
     const diagnosisMatch = path.match(/^\/api\/diagnosis\/([^/]+)(?:\/(messages|attachments))?$/);
     if (diagnosisMatch) {
@@ -44,6 +53,7 @@ const server = createServer(async (request, response) => {
     const homeMatch = path.match(/^\/api\/homes\/([^/]+)$/);
     if (homeMatch && request.method === 'GET') return json(response, 200, await owned(db, 'homes', homeMatch[1]!, userId));
     throw new HttpError(404, 'Route not found');
+    } finally { release(); }
   } catch (error) { json(response, error instanceof HttpError ? error.status : error instanceof z.ZodError ? 400 : 500, { error: error instanceof HttpError ? error.message : error instanceof z.ZodError ? 'Invalid request fields' : 'Unexpected server error' }); }
 });
 server.listen(Number(process.env.CUSTOMER_APP_PORT ?? 3000), '127.0.0.1', () => console.log('Avero customer app ready'));
