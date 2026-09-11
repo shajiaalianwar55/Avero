@@ -1,0 +1,30 @@
+{
+  "name": "avero",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Contract-first home maintenance platform workspace",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "npm run typecheck && npm test && npm run fixtures:validate",
+    "dev:customer": "tsx apps/customer/src/server.ts",
+    "dev:provider": "tsx apps/provider/src/server.ts",
+    "fixtures:validate": "tsx scripts/validate-fixtures.ts",
+    "seed:check": "tsx scripts/seed.ts --check",
+    "test": "vitest run",
+    "typecheck": "tsc --noEmit -p tsconfig.json"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "devDependencies": {
+    "@types/node": "^24.3.1",
+    "tsx": "^4.23.13",
+    "typescript": "^7.0.2",
+    "vitest": "^5.0.0"
+  }
+}

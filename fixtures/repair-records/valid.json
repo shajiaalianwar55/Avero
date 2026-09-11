@@ -1,0 +1,16 @@
+{
+  "repair_record_id": "rr_401",
+  "home_id": "home_001",
+  "asset_id": null,
+  "service_request_id": "sr_001",
+  "booking_id": "bk_201",
+  "issue_summary": "Kitchen sink leaking",
+  "diagnosis": "Loose drain connection near P-trap",
+  "work_done": "P-trap connection reseated and seal replaced",
+  "provider_name": "Ahmed Plumbing Services",
+  "amount_paid": 3200,
+  "currency": "PKR",
+  "completed_at": "2026-09-14T19:45:00+05:00",
+  "warranty_end": "2026-09-21",
+  "notes": "No further leak observed after 10 minute test"
+}

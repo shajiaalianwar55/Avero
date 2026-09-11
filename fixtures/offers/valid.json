@@ -1,0 +1,14 @@
+{
+  "offer_id": "off_101",
+  "service_request_id": "sr_001",
+  "provider_id": "pro_007",
+  "visit_fee": 1500,
+  "currency": "PKR",
+  "estimated_total_min": 1500,
+  "estimated_total_max": 3500,
+  "parts_included": false,
+  "arrival_window": "19:00-20:00",
+  "warranty_days": 7,
+  "raw_response": "1500 visit, can come 7ish, parts separate, 7 day service warranty",
+  "extraction_confidence": 0.94
+}

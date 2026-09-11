@@ -1,0 +1,18 @@
+{
+  "request_id": "sr_bad",
+  "user_id": "usr_001",
+  "home_id": "home_001",
+  "diagnosis_session_id": "diag_001",
+  "category": "plumbing",
+  "issue_summary": "",
+  "likely_issue": null,
+  "diagnostic_confidence": 1.4,
+  "urgency": "urgent",
+  "classification": "tech_needed",
+  "safety_flags": [],
+  "facts": [],
+  "location": { "city": "Islamabad", "service_area": "F-10" },
+  "preferred_windows": [],
+  "attachments": [],
+  "status": "open"
+}

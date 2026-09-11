@@ -1,0 +1,22 @@
+{
+  "request_id": "sr_001",
+  "user_id": "usr_001",
+  "home_id": "home_001",
+  "diagnosis_session_id": "diag_001",
+  "category": "plumbing",
+  "issue_summary": "Kitchen sink leaks only while water is running",
+  "likely_issue": "Loose or leaking drain connection near P-trap",
+  "diagnostic_confidence": 0.82,
+  "urgency": "medium",
+  "classification": "technician",
+  "safety_flags": [],
+  "facts": [
+    "Leak stops when tap is off",
+    "Water appears below sink cabinet",
+    "User could not safely loosen fitting"
+  ],
+  "location": { "city": "Islamabad", "service_area": "F-10" },
+  "preferred_windows": ["today_evening"],
+  "attachments": [],
+  "status": "open"
+}

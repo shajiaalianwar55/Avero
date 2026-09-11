@@ -1,0 +1,14 @@
+{
+  "offer_id": "off_bad",
+  "service_request_id": "sr_001",
+  "provider_id": "pro_007",
+  "visit_fee": -100,
+  "currency": "rupees",
+  "estimated_total_min": 4000,
+  "estimated_total_max": 2000,
+  "parts_included": null,
+  "arrival_window": null,
+  "warranty_days": null,
+  "raw_response": "not sure",
+  "extraction_confidence": 2
+}
