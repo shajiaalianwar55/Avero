@@ -11,7 +11,7 @@ export class Diagnosis {
   async persist(row: Row) { return this.db.save('diagnosis_sessions', row); }
   async start(user: string, raw: unknown) {
     const input = StartInput.parse(raw); await owned(this.db, 'homes', input.home_id, user);
-    if (input.asset_id) { const asset = await owned(this.db, 'assets', input.asset_id, user); if (asset.home_id !== input.home_id) throw new HttpError(400, 'Appliance belongs to another home'); }
+    if (input.asset_id) { const asset = await owned(this.db, 'home_assets', input.asset_id, user); if (asset.home_id !== input.home_id) throw new HttpError(400, 'Appliance belongs to another home'); }
     const row = await this.persist({ id: `diag_${randomUUID()}`, user_id: user, home_id: input.home_id, payload: { complaint: input.text, asset_id: input.asset_id, safety: safetyState([], true), revision: 0, classification: null, interview: null, related_record_ids: [], visual_assessments: [] } });
     await this.message(row.id, user, { text: input.text, source: input.source }); return this.session(row.id, user);
   }

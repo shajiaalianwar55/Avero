@@ -13,6 +13,7 @@ import { acquire } from './serial.js';
 import { DIY } from './diy.js';
 import { Vision } from './vision.js';
 import { Handoff } from './handoff.js';
+import { History } from './history.js';
 try { process.loadEnvFile('.env'); } catch { /* deployment can supply environment */ }
 const db = configuredDatabase();
 const diagnosis = new Diagnosis(db);
@@ -21,6 +22,7 @@ const assessment = new Assessment(diagnosis,ai);
 const diy = new DIY(diagnosis);
 const vision = new Vision(diagnosis,ai);
 const handoff = new Handoff(diagnosis,ai);
+const history = new History(db,ai);
 const staticFiles: Record<string, [string, string]> = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
 const server = createServer(async (request, response) => {
   try {
@@ -36,6 +38,14 @@ const server = createServer(async (request, response) => {
     const userId = data.user.id;
     const release = await acquire(userId);
     try {
+    const historyMatch=path.match(/^\/api\/homes\/([^/]+)\/(history|context|assets)$/);
+    if(historyMatch) {
+      const home=historyMatch[1]!; const action=historyMatch[2];
+      if(request.method==='GET') return json(response,200,await (action==='history'?history.records(home,userId):action==='assets'?history.assets(home,userId):history.context(home,userId,url.searchParams.get('query') || '')));
+      if(request.method==='POST'&&action==='assets')return json(response,201,await history.addAsset(home,userId,await body(request)));
+    }
+    const recordMatch=path.match(/^\/api\/(repair-records|assets)\/([^/]+)$/);
+    if(recordMatch&&request.method==='GET')return json(response,200,await(recordMatch[1]==='assets'?history.asset(recordMatch[2]!,userId):history.record(recordMatch[2]!,userId)));
     if (path==='/api/service-requests' && request.method==='POST') return json(response,201,await handoff.ticket(userId,await body(request)));
     const summaryMatch=path.match(/^\/api\/diagnosis\/([^/]+)\/(summary|evidence)$/);
     if (summaryMatch && request.method==='GET') return json(response,200,await (summaryMatch[2]==='summary'?handoff.summary(summaryMatch[1]!,userId):handoff.evidence(summaryMatch[1]!,userId)));
@@ -46,7 +56,11 @@ const server = createServer(async (request, response) => {
     if (visionMatch && request.method==='POST') return json(response,200,await vision.assess(visionMatch[1]!,userId,await body(request)));
     const assessmentMatch = path.match(/^\/api\/diagnosis\/([^/]+)\/(next|safety-check|classify)$/);
     if (assessmentMatch && request.method === 'POST') { const id = assessmentMatch[1]!; return json(response,200,await (assessmentMatch[2]==='next' ? assessment.next(id,userId) : assessmentMatch[2]==='classify' ? assessment.classify(id,userId) : assessment.safety(id,userId))); }
-    if (path === '/api/diagnosis/sessions' && request.method === 'POST') { const result = await diagnosis.start(userId, await body(request)); return json(response,201,{...result,diagnosis_session_id:result.id,normalized_initial_complaint:result.payload.complaint}); }
+    if (path === '/api/diagnosis/sessions' && request.method === 'POST') {
+      const result = await diagnosis.start(userId, await body(request));
+      if(!result.payload.safety.safety_flags.length) { const context=await history.context(result.home_id,userId,result.payload.complaint,result.payload.asset_id); result.payload.history_context=context; result.payload.related_record_ids=context.related_repair_ids; await diagnosis.persist(result); }
+      return json(response,201,{...result,diagnosis_session_id:result.id,normalized_initial_complaint:result.payload.complaint});
+    }
     const diagnosisMatch = path.match(/^\/api\/diagnosis\/([^/]+)(?:\/(messages|attachments))?$/);
     if (diagnosisMatch) {
       const id = diagnosisMatch[1]!; const action = diagnosisMatch[2];
