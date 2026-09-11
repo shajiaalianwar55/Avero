@@ -6,8 +6,10 @@ import { z } from 'zod';
 import { HomeInputSchema, ProfileInputSchema } from '@avero/contracts';
 import { configuredDatabase, HttpError, owned } from './database.js';
 import { body, json } from './http.js';
+import { Diagnosis } from './diagnosis.js';
 try { process.loadEnvFile('.env'); } catch { /* deployment can supply environment */ }
 const db = configuredDatabase();
+const diagnosis = new Diagnosis(db);
 const staticFiles: Record<string, [string, string]> = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
 const server = createServer(async (request, response) => {
   try {
@@ -21,6 +23,16 @@ const server = createServer(async (request, response) => {
     const { data, error } = await db.client.auth.getUser(token);
     if (error || !data.user) throw new HttpError(401, 'Session expired. Sign in again.');
     const userId = data.user.id;
+    if (path === '/api/diagnosis/sessions' && request.method === 'POST') { const result = await diagnosis.start(userId, await body(request)); return json(response,201,{...result,diagnosis_session_id:result.id,normalized_initial_complaint:result.payload.complaint}); }
+    const diagnosisMatch = path.match(/^\/api\/diagnosis\/([^/]+)(?:\/(messages|attachments))?$/);
+    if (diagnosisMatch) {
+      const id = diagnosisMatch[1]!; const action = diagnosisMatch[2];
+      if (!action && request.method === 'GET') return json(response,200,{...await diagnosis.session(id,userId),messages:await diagnosis.messages(id,userId)});
+      if (action === 'messages' && request.method === 'POST') return json(response,201,await diagnosis.message(id,userId,await body(request)));
+      if (action === 'attachments' && request.method === 'POST') return json(response,201,await diagnosis.attach(id,userId,await body(request)));
+    }
+    const attachmentMatch = path.match(/^\/api\/attachments\/([^/]+)$/);
+    if (attachmentMatch && request.method === 'GET') { const file = await owned(db,'attachments',attachmentMatch[1]!,userId); response.writeHead(200,{'Content-Type':file.payload.mime_type,'Cache-Control':'no-store','X-Content-Type-Options':'nosniff'}); return response.end(Buffer.from(file.payload.base64,'base64')); }
     if (path === '/api/profile' && request.method === 'POST') { const input = ProfileInputSchema.parse(await body(request)); return json(response, 200, await db.save('users', { id: userId, name: input.name, email: data.user.email })); }
     if (path === '/api/homes' && request.method === 'GET') return json(response, 200, await db.list('homes', { user_id: userId }));
     if (path === '/api/homes' && request.method === 'POST') {
