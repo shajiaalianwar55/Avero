@@ -1,6 +1,6 @@
 # Avero
 
-Avero is a contract-first AI home-maintenance platform. This repository starts with the shared integration contracts and deterministic demo data required by the build plan.
+Avero is a contract-first AI home-maintenance platform. The customer app includes authenticated home profiles, safety-first diagnosis, image assessment, a guarded DIY flow, technician handoff, repair history, warranty recall, and appliance profiles. The provider marketplace remains a separately owned application boundary.
 
 ## Prerequisites
 
@@ -16,7 +16,7 @@ Copy-Item .env.example .env
 npm run check
 ```
 
-Run the homeowner and provider skeletons in separate terminals:
+Start Supabase, apply the migrations, then run the apps in separate terminals:
 
 ```bash
 npm run dev:customer
@@ -24,6 +24,20 @@ npm run dev:provider
 ```
 
 The default health endpoints are `http://localhost:3000/health` and `http://localhost:3001/health`.
+
+The browser receives only `SUPABASE_PUBLISHABLE_KEY`. `SUPABASE_SECRET_KEY` (or the legacy `SUPABASE_SERVICE_ROLE_KEY`) stays on the server and must never use a `NEXT_PUBLIC_` prefix. Add `OPENAI_API_KEY` to enable model-assisted assessments; if the provider fails or is omitted, Avero returns a conservative technician/stop fallback instead of a fabricated diagnosis.
+
+## Verification
+
+With local Supabase running and migrations applied:
+
+```bash
+npm run check
+npm run test:integration
+npm run test:browser
+```
+
+`test:integration` uses temporary local-only users and records, tests ownership boundaries and RLS, then removes exactly those fixtures. `test:browser` adds desktop and mobile checks using an installed Edge browser. Neither command resets the database. Unit tests inject model responses and do not spend API credits.
 
 ## Database seed
 

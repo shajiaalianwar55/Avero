@@ -5,7 +5,7 @@ This document identifies where Avero uses a model, where deterministic rules rem
 ## Runtime default
 
 - Provider: OpenAI
-- API: Responses API (planned integration; no model calls are implemented in S-02)
+- API: Responses API with strict JSON Schema Structured Outputs
 - Pinned model: `gpt-5.4-mini-2026-03-17`
 - Configuration: `AI_PROVIDER`, `AI_MODEL_DEFAULT`, and per-feature prompt-version environment variables
 
@@ -24,14 +24,14 @@ The pinned model accepts text and image inputs and supports Structured Outputs, 
 | B-05 Offer recommendation | Explain tradeoffs from normalized scores and preferences | Text | `b05.v1` | Price, availability, rating, warranty scores, and paid-placement exclusion are deterministic |
 | C-03 History-aware context | Summarize retrieved repair and warranty context and next action | Text | `c03.v1` | Database retrieval and warranty-date comparison are deterministic |
 
-Until a feature is integrated, this register describes its approved runtime default, not a claim that the feature is already live.
+A-03, A-04, A-05, A-07, A-10, and C-03 are integrated in the customer application. B-04 and B-05 remain the marketplace owner's boundary.
 
 ## Data retention and transparency
 
-`AITraceEvent` stores feature and model metadata, record references, latency, confidence, validation state, validated structured output, structured evidence, safety-rule hits, and explicit error or fallback state. It does not store hidden chain-of-thought, scratchpads, or private reasoning. The shared helper rejects common private-reasoning field names before persistence.
+`AITraceEvent` stores feature and model metadata, opaque record references, latency, confidence, validation state, minimal schema-validation evidence, safety-rule hits, and explicit error or fallback state. Customer runtime traces intentionally omit transcripts, images, addresses, and structured model output. They do not store hidden chain-of-thought, scratchpads, or private reasoning. The shared helper also rejects common private-reasoning field names before persistence.
 
 Raw user or provider content stays in its source record under that record's retention policy. The trace points to source and output record IDs and contains only evidence safe to retain. User-facing explanations are generated from structured evidence, never from hidden reasoning.
 
 ## Simulated and non-AI behavior
 
-Safety rules, validation, ranking weights, database retrieval, provider seeding, payment states, and fallback fixtures are deterministic. S-02 supplies observability and evaluation infrastructure only; it does not claim that any planned model call, WhatsApp or SMS delivery, emergency calling, payment settlement, or nationwide discovery is live.
+Safety rules, validation, DIY allowlisting, database retrieval, warranty-date comparison, and fallback fixtures are deterministic. Avero does not call emergency services, deliver WhatsApp/SMS messages, settle payments, or claim nationwide provider discovery. Voice transcription uses the browser's speech-recognition implementation when available and always lets the user review the transcript before sending it.

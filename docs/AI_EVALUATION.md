@@ -18,6 +18,8 @@ npm run check
 
 The evaluation validator fails when any feature lacks one of the three case kinds. Contract tests also validate representative success, ambiguity, and deterministic-fallback `AITraceEvent` records.
 
+Customer feature tests inject success, ambiguous, invalid-output, and provider-failure responses, so the suite is reproducible and does not spend API credits. `npm run test:integration` verifies the real local Supabase/auth boundary, while `npm run test:browser` exercises desktop and mobile UI flows. Run a separate live synthetic Structured Outputs smoke test when changing provider or model configuration; that check incurs normal provider usage.
+
 ## Feature targets
 
 | Feature | Required behavior |
@@ -42,4 +44,4 @@ The evaluation validator fails when any feature lacks one of the three case kind
 
 ## Current status
 
-The schema, trace helper, database table, disclosure, and 24 baseline cases are implemented. Live model execution and measured pass-rate reporting begin when each feature is built. Evaluation results must distinguish model output from deterministic safety, validation, retrieval, and ranking behavior.
+The schema, trace helper, database table, disclosure, 24 baseline cases, customer model runner, and deterministic fallbacks are implemented. A live synthetic check against the configured pinned model was schema-valid on 2026-09-12. This is a connectivity check, not a measured quality pass rate. Evaluation results must distinguish model output from deterministic safety, validation, retrieval, and ranking behavior.
