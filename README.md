@@ -40,9 +40,12 @@ supabase db reset
 - `apps/provider`: provider application boundary
 - `services`: feature-service boundaries documented for parallel development
 - `packages/contracts`: shared Zod schemas, enums, and inferred TypeScript types
+- `packages/ai-observability`: safe AI trace construction and development sinks
 - `packages/ui`: shared design tokens
 - `fixtures`: contract and evaluation inputs
 - `supabase`: migrations and deterministic seed data
 - `docs`: API, AI, and demo documentation
 
 The root Markdown and Word build plans are the implementation contract. Cross-team payloads must pass the schemas in `@avero/contracts`; internal database rows are not integration contracts.
+
+AI features must emit `AITraceEvent` records through `@avero/ai-observability` and retain structured evidence only. See `docs/AI_DISCLOSURE.md` and `docs/AI_EVALUATION.md` before adding or changing a model-assisted feature.

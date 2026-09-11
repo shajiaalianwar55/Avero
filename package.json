@@ -10,9 +10,10 @@
   ],
   "scripts": {
     "build": "tsc -p tsconfig.json",
-    "check": "npm run typecheck && npm test && npm run fixtures:validate",
+    "check": "npm run typecheck && npm test && npm run fixtures:validate && npm run evaluations:validate",
     "dev:customer": "tsx apps/customer/src/server.ts",
     "dev:provider": "tsx apps/provider/src/server.ts",
+    "evaluations:validate": "tsx scripts/validate-ai-evaluations.ts",
     "fixtures:validate": "tsx scripts/validate-fixtures.ts",
     "seed:check": "tsx scripts/seed.ts --check",
     "test": "vitest run",
