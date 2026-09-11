@@ -12,6 +12,7 @@ import { Assessment } from './assessment.js';
 import { acquire } from './serial.js';
 import { DIY } from './diy.js';
 import { Vision } from './vision.js';
+import { Handoff } from './handoff.js';
 try { process.loadEnvFile('.env'); } catch { /* deployment can supply environment */ }
 const db = configuredDatabase();
 const diagnosis = new Diagnosis(db);
@@ -19,6 +20,7 @@ const ai = new AI(db);
 const assessment = new Assessment(diagnosis,ai);
 const diy = new DIY(diagnosis);
 const vision = new Vision(diagnosis,ai);
+const handoff = new Handoff(diagnosis,ai);
 const staticFiles: Record<string, [string, string]> = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
 const server = createServer(async (request, response) => {
   try {
@@ -34,6 +36,9 @@ const server = createServer(async (request, response) => {
     const userId = data.user.id;
     const release = await acquire(userId);
     try {
+    if (path==='/api/service-requests' && request.method==='POST') return json(response,201,await handoff.ticket(userId,await body(request)));
+    const summaryMatch=path.match(/^\/api\/diagnosis\/([^/]+)\/(summary|evidence)$/);
+    if (summaryMatch && request.method==='GET') return json(response,200,await (summaryMatch[2]==='summary'?handoff.summary(summaryMatch[1]!,userId):handoff.evidence(summaryMatch[1]!,userId)));
     if (path==='/api/diy/start' && request.method==='POST') return json(response,201,await diy.start(userId,await body(request)));
     const stepMatch=path.match(/^\/api\/diy\/([^/]+)\/step-result$/);
     if (stepMatch && request.method==='POST') return json(response,200,await diy.result(stepMatch[1]!,userId,await body(request)));
