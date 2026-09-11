@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {MemoryDatabase} from './customer.test.js';
+import {MemoryDatabase} from './helpers/memory.js';
 import {Diagnosis} from '../apps/customer/src/diagnosis.js';
 import {DIY} from '../apps/customer/src/diy.js';
 import {Vision} from '../apps/customer/src/vision.js';

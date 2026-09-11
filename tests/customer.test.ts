@@ -1,13 +1,9 @@
 import { describe, it, expect } from 'vitest';
 import { HomeInputSchema } from '@avero/contracts';
-import { owned, type Database, type Row } from '../apps/customer/src/database.js';
+import { owned } from '../apps/customer/src/database.js';
+import { MemoryDatabase } from './helpers/memory.js';
 import { Diagnosis } from '../apps/customer/src/diagnosis.js';
 import { detectHazards } from '../apps/customer/src/safety.js';
-export class MemoryDatabase implements Database {
-  tables: Record<string, Row[]> = {};
-  async list(table: string, filters: Record<string, string> = {}) { return structuredClone((this.tables[table] ?? []).filter(row => Object.entries(filters).every(([key,value]) => row[key] === value))); }
-  async save(table: string, row: Row) { const rows = this.tables[table] ??= []; const index = rows.findIndex(item => item.id === row.id); if (index < 0) rows.push(structuredClone(row)); else rows[index] = {...rows[index], ...structuredClone(row)}; return structuredClone(row); }
-}
 describe('customer boundaries', () => {
   it.each(['gas smell','burning socket','exposed wire','standing water near electricity','smoke/fire','structural instability'])('interrupts %s', text => expect(detectHazards(text).length).toBeGreaterThan(0));
   it('stores voice transcripts and never clears a previous emergency', async () => {

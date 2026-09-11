@@ -1,5 +1,5 @@
 import {it,expect} from 'vitest';
-import {MemoryDatabase} from './customer.test.js';
+import {MemoryDatabase} from './helpers/memory.js';
 import {History,activeWarranty} from '../apps/customer/src/history.js';
 import {AI} from '../apps/customer/src/ai.js';
 const repair=(id:string)=>({repair_record_id:id,home_id:'h',asset_id:'ac',service_request_id:'sr',booking_id:'book',issue_summary:'AC not cooling',diagnosis:'AC refrigerant leak',work_done:'Leak repaired',provider_name:'Ali Cooling',amount_paid:1500,currency:'PKR',completed_at:'2026-09-01T12:00:00Z',warranty_end:'2099-12-31',notes:null});

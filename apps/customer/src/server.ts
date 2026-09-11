@@ -38,6 +38,8 @@ const server = createServer(async (request, response) => {
     const userId = data.user.id;
     const release = await acquire(userId);
     try {
+    const extrasMatch=path.match(/^\/api\/homes\/([^/]+)\/(diagnoses|photos)$/);
+    if(extrasMatch&&request.method==='GET'){const home=extrasMatch[1]!;await owned(db,'homes',home,userId);const sessions=await db.list('diagnosis_sessions',{home_id:home,user_id:userId});if(extrasMatch[2]==='diagnoses')return json(response,200,sessions.sort((a,b)=>b.created_at.localeCompare(a.created_at)).slice(0,20));const ids=new Set(sessions.map(s=>s.id));return json(response,200,(await db.list('attachments',{user_id:userId})).filter(a=>ids.has(a.session_id)).map(a=>({attachment_id:a.id,caption:a.payload.caption})));}
     const historyMatch=path.match(/^\/api\/homes\/([^/]+)\/(history|context|assets)$/);
     if(historyMatch) {
       const home=historyMatch[1]!; const action=historyMatch[2];
