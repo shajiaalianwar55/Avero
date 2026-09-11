@@ -10,11 +10,15 @@ import { Diagnosis } from './diagnosis.js';
 import { AI } from './ai.js';
 import { Assessment } from './assessment.js';
 import { acquire } from './serial.js';
+import { DIY } from './diy.js';
+import { Vision } from './vision.js';
 try { process.loadEnvFile('.env'); } catch { /* deployment can supply environment */ }
 const db = configuredDatabase();
 const diagnosis = new Diagnosis(db);
 const ai = new AI(db);
 const assessment = new Assessment(diagnosis,ai);
+const diy = new DIY(diagnosis);
+const vision = new Vision(diagnosis,ai);
 const staticFiles: Record<string, [string, string]> = { '/': ['index.html', 'text/html'], '/app.js': ['app.js', 'text/javascript'], '/style.css': ['style.css', 'text/css'] };
 const server = createServer(async (request, response) => {
   try {
@@ -30,6 +34,11 @@ const server = createServer(async (request, response) => {
     const userId = data.user.id;
     const release = await acquire(userId);
     try {
+    if (path==='/api/diy/start' && request.method==='POST') return json(response,201,await diy.start(userId,await body(request)));
+    const stepMatch=path.match(/^\/api\/diy\/([^/]+)\/step-result$/);
+    if (stepMatch && request.method==='POST') return json(response,200,await diy.result(stepMatch[1]!,userId,await body(request)));
+    const visionMatch=path.match(/^\/api\/diagnosis\/([^/]+)\/vision$/);
+    if (visionMatch && request.method==='POST') return json(response,200,await vision.assess(visionMatch[1]!,userId,await body(request)));
     const assessmentMatch = path.match(/^\/api\/diagnosis\/([^/]+)\/(next|safety-check|classify)$/);
     if (assessmentMatch && request.method === 'POST') { const id = assessmentMatch[1]!; return json(response,200,await (assessmentMatch[2]==='next' ? assessment.next(id,userId) : assessmentMatch[2]==='classify' ? assessment.classify(id,userId) : assessment.safety(id,userId))); }
     if (path === '/api/diagnosis/sessions' && request.method === 'POST') { const result = await diagnosis.start(userId, await body(request)); return json(response,201,{...result,diagnosis_session_id:result.id,normalized_initial_complaint:result.payload.complaint}); }
