@@ -60,6 +60,7 @@ const server = createServer(async (request, response) => {
     if (assessmentMatch && request.method === 'POST') { const id = assessmentMatch[1]!; return json(response,200,await (assessmentMatch[2]==='next' ? assessment.next(id,userId) : assessmentMatch[2]==='classify' ? assessment.classify(id,userId) : assessment.safety(id,userId))); }
     if (path === '/api/diagnosis/sessions' && request.method === 'POST') {
       const result = await diagnosis.start(userId, await body(request));
+      result.payload.safety=await assessment.safety(result.id,userId);
       if(!result.payload.safety.safety_flags.length) { const context=await history.context(result.home_id,userId,result.payload.complaint,result.payload.asset_id); result.payload.history_context=context; result.payload.related_record_ids=context.related_repair_ids; await diagnosis.persist(result); }
       return json(response,201,{...result,diagnosis_session_id:result.id,normalized_initial_complaint:result.payload.complaint});
     }
@@ -67,7 +68,7 @@ const server = createServer(async (request, response) => {
     if (diagnosisMatch) {
       const id = diagnosisMatch[1]!; const action = diagnosisMatch[2];
       if (!action && request.method === 'GET') return json(response,200,{...await diagnosis.session(id,userId),messages:await diagnosis.messages(id,userId)});
-      if (action === 'messages' && request.method === 'POST') return json(response,201,await diagnosis.message(id,userId,await body(request)));
+      if (action === 'messages' && request.method === 'POST') { await diagnosis.message(id,userId,await body(request)); await assessment.safety(id,userId); return json(response,201,await diagnosis.session(id,userId)); }
       if (action === 'attachments' && request.method === 'POST') return json(response,201,await diagnosis.attach(id,userId,await body(request)));
     }
     const attachmentMatch = path.match(/^\/api\/attachments\/([^/]+)$/);
