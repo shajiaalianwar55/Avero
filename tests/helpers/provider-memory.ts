@@ -14,7 +14,8 @@ export class ProviderMemoryDatabase implements Database {
 
   async save(table: string, row: Row) {
     const rows = (this.tables[table] ??= []);
-    const index = rows.findIndex((item) => item.id === row.id);
+    const key = table === 'ai_events' ? 'event_id' : 'id';
+    const index = rows.findIndex((item) => item[key] === row[key]);
     if (index < 0) rows.push(structuredClone(row));
     else rows[index] = { ...rows[index], ...structuredClone(row) };
     return structuredClone(row);

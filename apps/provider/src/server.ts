@@ -6,6 +6,7 @@ import { configuredDatabase, HttpError } from './database.js';
 import { Discover } from './discover.js';
 import { Dispatch } from './dispatch.js';
 import { Portal } from './portal.js';
+import { Normalize } from './normalize.js';
 import { body, json } from './http.js';
 
 try {
@@ -18,6 +19,7 @@ const db = configuredDatabase();
 const discover = new Discover(db);
 const dispatch = new Dispatch(db);
 const portal = new Portal(db, dispatch);
+const normalize = new Normalize(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 const staticFiles: Record<string, [string, string]> = {
   '/': ['index.html', 'text/html'],
@@ -77,6 +79,12 @@ const server = createServer(async (request, response) => {
     const respondMatch = path.match(/^\/api\/provider\/jobs\/([^/]+)\/respond$/);
     if (respondMatch && request.method === 'POST') {
       return json(response, 201, await portal.respond(respondMatch[1]!, await body(request)));
+    }
+
+    const normalizeMatch = path.match(/^\/api\/offers\/([^/]+)\/normalize$/);
+    if (normalizeMatch && request.method === 'POST') {
+      await body(request);
+      return json(response, 200, await normalize.run(data.user.id, normalizeMatch[1]!));
     }
 
     throw new HttpError(404, 'Route not found');

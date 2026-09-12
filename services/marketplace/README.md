@@ -34,3 +34,14 @@ Implemented in the provider app:
 - Writes `provider_responses` and, on accept, an `offers` draft (`extraction_confidence: 0`) for B-04 normalization
 - Marks the dispatch `responded`; retries are idempotent
 - Hackathon auth model: any signed-in user may select a provider identity to simulate independent technicians
+
+## B-04 AI quote normalization
+
+- `POST /api/offers/:id/normalize`
+- Auth: Bearer token; caller must own the linked service request (same ownership model as B-01/B-02)
+- Loads the B-03 offer draft + preserved `raw_response` (and optional `provider_responses` id for traces)
+- Passes the stored `ServiceRequestContract` as context only — does not reshape A-09
+- Writes an updated `offers.payload` as `NormalizedOfferContract` with real `extraction_confidence`
+- Never invents quote fields; unknowns stay `null`; returns `missing_fields` and `normalization_warnings` beside the offer
+- Records `AITraceEvent` (`feature_id: B-04`, prompt `b04.v1`) into `ai_events`
+- Does not implement ranking (B-05)

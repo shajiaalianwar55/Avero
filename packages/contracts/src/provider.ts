@@ -1,5 +1,7 @@
 import { z } from "zod";
 import { UrgencySchema } from "./enums.js";
+import { NormalizedOfferContractSchema } from "./offer.js";
+import { AIExecutionStateSchema } from "./ai.js";
 
 /** Comparable provider row returned by B-01 discovery. contact_channel is null until a real channel is stored. */
 export const ProviderCandidateSchema = z.object({
@@ -138,3 +140,36 @@ export type ProviderRespondInput = z.infer<typeof ProviderRespondInputSchema>;
 export type RawProviderResponse = z.infer<typeof RawProviderResponseSchema>;
 export type ProviderJob = z.infer<typeof ProviderJobSchema>;
 export type ProviderRespondResult = z.infer<typeof ProviderRespondResultSchema>;
+
+/**
+ * B-04 model extraction shape (internal). Comparable offer fields land on
+ * NormalizedOfferContractSchema; warnings/missing stay on the API result / AI evidence.
+ */
+export const QuoteExtractionSchema = z.object({
+  visit_fee: z.number().int().nonnegative().nullable(),
+  currency: z.string().trim().length(3).nullable(),
+  estimated_total_min: z.number().int().nonnegative().nullable(),
+  estimated_total_max: z.number().int().nonnegative().nullable(),
+  parts_included: z.boolean().nullable(),
+  arrival_window: z.string().trim().min(1).nullable(),
+  warranty_days: z.number().int().nonnegative().nullable(),
+  confidence: z.number().min(0).max(1),
+  missing_fields: z.array(z.string().trim().min(1)),
+  warnings: z.array(z.string().trim().min(1)),
+  abstain: z.boolean(),
+}).strict().refine(
+  ({ estimated_total_min, estimated_total_max }) =>
+    estimated_total_min === null || estimated_total_max === null || estimated_total_min <= estimated_total_max,
+  { message: "estimated_total_min must not exceed estimated_total_max", path: ["estimated_total_max"] },
+);
+
+/** B-04 HTTP result: comparable offer contract plus explicit unknowns (not inventing fields on the offer schema). */
+export const NormalizeOfferResultSchema = z.object({
+  offer: NormalizedOfferContractSchema,
+  missing_fields: z.array(z.string().trim().min(1)),
+  normalization_warnings: z.array(z.string().trim().min(1)),
+  execution_state: AIExecutionStateSchema,
+}).strict();
+
+export type QuoteExtraction = z.infer<typeof QuoteExtractionSchema>;
+export type NormalizeOfferResult = z.infer<typeof NormalizeOfferResultSchema>;
