@@ -45,3 +45,15 @@ Implemented in the provider app:
 - Never invents quote fields; unknowns stay `null`; returns `missing_fields` and `normalization_warnings` beside the offer
 - Records `AITraceEvent` (`feature_id: B-04`, prompt `b04.v1`) into `ai_events`
 - Does not implement ranking (B-05)
+
+## B-05 Offer ranking and recommendation explanation
+
+- `GET /api/service-requests/:id/ranked-offers`
+- Auth: Bearer token; caller must own the service request (same model as B-01/B-02/B-04)
+- Loads B-04-normalized offers only (`extraction_confidence > 0`); declines and unnormalized drafts are excluded
+- Deterministic multi-factor scores: price, availability, rating, warranty, fit (documented weights; urgency reweights availability/warranty)
+- Paid placement is never a scoring factor
+- AI (`b05.v1`) explains the precomputed ranking only — it does not choose or override the winner
+- Persists a stable snapshot `rank_<service_request_id>` in `offer_rankings`
+- Empty set → `recommended_offer_id: null`, `execution_state: abstained`
+- Does not implement booking (B-06) or customer comparison UI

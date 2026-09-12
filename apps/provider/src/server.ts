@@ -7,6 +7,7 @@ import { Discover } from './discover.js';
 import { Dispatch } from './dispatch.js';
 import { Portal } from './portal.js';
 import { Normalize } from './normalize.js';
+import { Ranking } from './ranking.js';
 import { body, json } from './http.js';
 
 try {
@@ -20,6 +21,7 @@ const discover = new Discover(db);
 const dispatch = new Dispatch(db);
 const portal = new Portal(db, dispatch);
 const normalize = new Normalize(db);
+const ranking = new Ranking(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 const staticFiles: Record<string, [string, string]> = {
   '/': ['index.html', 'text/html'],
@@ -64,6 +66,11 @@ const server = createServer(async (request, response) => {
     const dispatchMatch = path.match(/^\/api\/service-requests\/([^/]+)\/dispatch$/);
     if (dispatchMatch && request.method === 'POST') {
       return json(response, 201, await dispatch.run(data.user.id, dispatchMatch[1]!, await body(request)));
+    }
+
+    const rankedMatch = path.match(/^\/api\/service-requests\/([^/]+)\/ranked-offers$/);
+    if (rankedMatch && request.method === 'GET') {
+      return json(response, 200, await ranking.run(data.user.id, rankedMatch[1]!));
     }
 
     if (path === '/api/providers' && request.method === 'GET') {

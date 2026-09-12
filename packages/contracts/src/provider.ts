@@ -173,3 +173,66 @@ export const NormalizeOfferResultSchema = z.object({
 
 export type QuoteExtraction = z.infer<typeof QuoteExtractionSchema>;
 export type NormalizeOfferResult = z.infer<typeof NormalizeOfferResultSchema>;
+
+/** B-05 deterministic score dimensions (AI must not invent or override these). */
+export const ScoreBreakdownSchema = z.object({
+  price: z.number().min(0).max(1),
+  availability: z.number().min(0).max(1),
+  rating: z.number().min(0).max(1),
+  warranty: z.number().min(0).max(1),
+  fit: z.number().min(0).max(1),
+}).strict();
+
+export const RankedProviderSummarySchema = z.object({
+  provider_id: z.string().trim().min(1),
+  name: z.string().trim().min(1),
+  rating: z.number().min(0).max(5).nullable(),
+  review_count: z.number().int().nonnegative(),
+  verification_status: z.string().trim().min(1),
+  service_area: z.string().trim().min(1),
+}).strict();
+
+export const RankedOfferSchema = z.object({
+  offer_id: z.string().trim().min(1),
+  provider_id: z.string().trim().min(1),
+  offer: NormalizedOfferContractSchema,
+  provider: RankedProviderSummarySchema,
+  total_score: z.number().min(0).max(1),
+  score_breakdown: ScoreBreakdownSchema,
+  unknowns: z.array(z.string().trim().min(1)),
+}).strict();
+
+export const RecommendationEvidenceSchema = z.object({
+  recommended_offer_id: z.string().trim().min(1).nullable(),
+  cheapest_offer_id: z.string().trim().min(1).nullable(),
+  urgency: UrgencySchema,
+  cited_factors: z.array(z.string().trim().min(1)),
+  why_not_cheapest: z.string().trim().min(1).nullable(),
+  unknowns_noted: z.array(z.string().trim().min(1)),
+  paid_placement_applied: z.literal(false),
+}).strict();
+
+export const RankedOffersResultSchema = z.object({
+  service_request_id: z.string().trim().min(1),
+  ranking_id: z.string().trim().min(1),
+  ranked_offers: z.array(RankedOfferSchema),
+  recommended_offer_id: z.string().trim().min(1).nullable(),
+  explanation: z.string().trim().min(1),
+  recommendation_evidence: RecommendationEvidenceSchema,
+  execution_state: AIExecutionStateSchema,
+}).strict();
+
+/** Internal B-05 model output — explanation only; winner is precomputed. */
+export const RankingExplanationSchema = z.object({
+  explanation: z.string().trim().min(1).max(2000),
+  cited_factors: z.array(z.string().trim().min(1)).max(10),
+  why_not_cheapest: z.string().trim().min(1).max(1000).nullable(),
+  confidence: z.number().min(0).max(1),
+}).strict();
+
+export type ScoreBreakdown = z.infer<typeof ScoreBreakdownSchema>;
+export type RankedProviderSummary = z.infer<typeof RankedProviderSummarySchema>;
+export type RankedOffer = z.infer<typeof RankedOfferSchema>;
+export type RecommendationEvidence = z.infer<typeof RecommendationEvidenceSchema>;
+export type RankedOffersResult = z.infer<typeof RankedOffersResultSchema>;
+export type RankingExplanation = z.infer<typeof RankingExplanationSchema>;
