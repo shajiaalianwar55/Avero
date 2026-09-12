@@ -3,5 +3,6 @@ export * from "./customer.js";
 export * from "./evidence.js";
 export * from "./enums.js";
 export * from "./offer.js";
+export * from "./provider.js";
 export * from "./repair-record.js";
 export * from "./service-request.js";
