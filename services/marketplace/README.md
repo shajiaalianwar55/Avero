@@ -12,3 +12,14 @@ Implemented in the provider app:
 - Alternate body: a full `ServiceRequestContract` owned by the authenticated user
 - Response: `DiscoverResult` with deterministic `provider_candidates` from `public.providers`
 - Does not invent contact channels, availability, or providers
+
+## B-02 Request distribution
+
+- `POST /api/service-requests/:id/dispatch`
+- Auth: same Bearer ownership as B-01 (caller must own the service request)
+- Body: `{ "provider_ids": ["pro_007", ...] }` — typically B-01 candidate ids
+- Persists `provider_dispatches` with stable ids `disp_<request>_<provider>`
+- Idempotent per `(service_request_id, provider_id)`; does not rewind `responded` / `expired`
+- Channel adapter: hackathon default `portal` marks status `delivered` immediately so jobs are ready for B-03 `GET /api/provider/jobs`
+- Future WhatsApp/SMS adapters should create `sent` then advance to `delivered` without changing this HTTP contract
+- Helper `Dispatch.portalJobs(providerId)` lists open portal jobs for the upcoming provider portal

@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { z } from 'zod';
 import { configuredDatabase, HttpError } from './database.js';
 import { Discover } from './discover.js';
+import { Dispatch } from './dispatch.js';
 import { body, json } from './http.js';
 
 try {
@@ -12,6 +13,7 @@ try {
 
 const db = configuredDatabase();
 const discover = new Discover(db);
+const dispatch = new Dispatch(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 
 const server = createServer(async (request, response) => {
@@ -32,6 +34,11 @@ const server = createServer(async (request, response) => {
 
     if (path === '/api/marketplace/discover' && request.method === 'POST') {
       return json(response, 200, await discover.run(data.user.id, await body(request)));
+    }
+
+    const dispatchMatch = path.match(/^\/api\/service-requests\/([^/]+)\/dispatch$/);
+    if (dispatchMatch && request.method === 'POST') {
+      return json(response, 201, await dispatch.run(data.user.id, dispatchMatch[1]!, await body(request)));
     }
 
     throw new HttpError(404, 'Route not found');

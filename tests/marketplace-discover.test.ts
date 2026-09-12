@@ -3,27 +3,8 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { ServiceRequestContractSchema } from '@avero/contracts';
 import { Discover } from '../apps/provider/src/discover.js';
-import { HttpError, type Database, type Row } from '../apps/provider/src/database.js';
-
-class MemoryDatabase implements Database {
-  tables: Record<string, Row[]> = {};
-
-  async list(table: string, filters: Record<string, string> = {}) {
-    return structuredClone(
-      (this.tables[table] ?? []).filter((row) =>
-        Object.entries(filters).every(([key, value]) => row[key] === value),
-      ),
-    );
-  }
-
-  async save(table: string, row: Row) {
-    const rows = (this.tables[table] ??= []);
-    const index = rows.findIndex((item) => item.id === row.id);
-    if (index < 0) rows.push(structuredClone(row));
-    else rows[index] = { ...rows[index], ...structuredClone(row) };
-    return structuredClone(row);
-  }
-}
+import { HttpError, type Row } from '../apps/provider/src/database.js';
+import { ProviderMemoryDatabase } from './helpers/provider-memory.js';
 
 const fixture = (path: string): unknown => JSON.parse(readFileSync(resolve(path), 'utf8'));
 
@@ -57,13 +38,13 @@ const seededProviders: Row[] = [
   },
 ];
 
-async function seedProviders(db: MemoryDatabase) {
+async function seedProviders(db: ProviderMemoryDatabase) {
   for (const provider of seededProviders) await db.save('providers', provider);
 }
 
 describe('B-01 provider discovery', () => {
   it('returns the three seeded plumbing providers in deterministic order for the canonical request', async () => {
-    const db = new MemoryDatabase();
+    const db = new ProviderMemoryDatabase();
     await seedProviders(db);
     const contract = ServiceRequestContractSchema.parse(fixture('fixtures/service-requests/valid.json'));
     const result = await new Discover(db).fromContract(contract);
@@ -86,7 +67,7 @@ describe('B-01 provider discovery', () => {
   });
 
   it('loads an owned service request by id without reshaping the stored contract', async () => {
-    const db = new MemoryDatabase();
+    const db = new ProviderMemoryDatabase();
     await seedProviders(db);
     const contract = ServiceRequestContractSchema.parse(fixture('fixtures/service-requests/valid.json'));
     await db.save('service_requests', {
@@ -104,7 +85,7 @@ describe('B-01 provider discovery', () => {
   });
 
   it('returns an empty list for an unmatched category/city instead of inventing providers', async () => {
-    const db = new MemoryDatabase();
+    const db = new ProviderMemoryDatabase();
     await seedProviders(db);
     const contract = ServiceRequestContractSchema.parse({
       ...fixture('fixtures/service-requests/valid.json') as object,
@@ -118,7 +99,7 @@ describe('B-01 provider discovery', () => {
   });
 
   it('matches electrical on the multi-category seeded provider only', async () => {
-    const db = new MemoryDatabase();
+    const db = new ProviderMemoryDatabase();
     await seedProviders(db);
     const contract = ServiceRequestContractSchema.parse({
       ...fixture('fixtures/service-requests/valid.json') as object,
@@ -131,7 +112,7 @@ describe('B-01 provider discovery', () => {
   });
 
   it('rejects invalid discover input and unauthorized contract ownership', async () => {
-    const db = new MemoryDatabase();
+    const db = new ProviderMemoryDatabase();
     await seedProviders(db);
     const discover = new Discover(db);
 
@@ -145,7 +126,7 @@ describe('B-01 provider discovery', () => {
   });
 
   it('keeps ordering stable when ratings tie by preferring verified then id', async () => {
-    const db = new MemoryDatabase();
+    const db = new ProviderMemoryDatabase();
     await db.save('providers', {
       id: 'pro_b',
       name: 'Beta',
