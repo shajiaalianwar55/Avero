@@ -1,0 +1,41 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Avero · Provider portal</title>
+  <link rel="stylesheet" href="/style.css">
+  <script src="/app.js" defer></script>
+</head>
+<body>
+  <header>
+    <a class="brand" href="/">avero<span>✳</span></a>
+    <span>Provider portal</span>
+    <button id="logout" type="button" hidden>Sign out</button>
+  </header>
+  <main>
+    <div id="notice" role="status" aria-live="polite"></div>
+    <section id="auth">
+      <p class="eyebrow">FOR TECHNICIANS</p>
+      <h1>Jobs waiting<br>for your quote.</h1>
+      <p>Sign in, choose your provider identity, and respond to dispatched service requests.</p>
+      <form id="auth-form">
+        <label>Email<input name="email" type="email" required autocomplete="email"></label>
+        <label>Password<input name="password" type="password" minlength="8" required autocomplete="current-password"></label>
+        <button name="action" value="login">Sign in</button>
+        <button name="action" value="signup" class="secondary">Create account</button>
+      </form>
+      <p class="muted">Hackathon note: any signed-in account can select a seeded provider identity (pro_007–pro_009) to simulate independent technicians.</p>
+    </section>
+    <section id="workspace" hidden>
+      <p class="eyebrow">OPEN DISPATCHES</p>
+      <h1>Your jobs</h1>
+      <label>Responding as
+        <select id="provider-select"></select>
+      </label>
+      <div id="feature-content"></div>
+    </section>
+  </main>
+  <footer>Clear quotes. Fair work. Same Avero care.</footer>
+</body>
+</html>

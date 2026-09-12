@@ -1,8 +1,11 @@
 import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
 import { z } from 'zod';
 import { configuredDatabase, HttpError } from './database.js';
 import { Discover } from './discover.js';
 import { Dispatch } from './dispatch.js';
+import { Portal } from './portal.js';
 import { body, json } from './http.js';
 
 try {
@@ -14,7 +17,13 @@ try {
 const db = configuredDatabase();
 const discover = new Discover(db);
 const dispatch = new Dispatch(db);
+const portal = new Portal(db, dispatch);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
+const staticFiles: Record<string, [string, string]> = {
+  '/': ['index.html', 'text/html'],
+  '/app.js': ['app.js', 'text/javascript'],
+  '/style.css': ['style.css', 'text/css'],
+};
 
 const server = createServer(async (request, response) => {
   try {
@@ -25,6 +34,20 @@ const server = createServer(async (request, response) => {
       response.writeHead(200, { 'content-type': 'application/json' });
       response.end(JSON.stringify({ app: 'provider', status: 'ok' }));
       return;
+    }
+
+    if (path === '/api/config') {
+      return json(response, 200, {
+        url: process.env.SUPABASE_URL,
+        key: process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY,
+      });
+    }
+
+    const asset = staticFiles[path];
+    if (asset && request.method === 'GET') {
+      const content = await readFile(fileURLToPath(new URL(`../public/${asset[0]}`, import.meta.url)));
+      response.writeHead(200, { 'content-type': asset[1], 'x-content-type-options': 'nosniff' });
+      return response.end(content);
     }
 
     const token = request.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
@@ -39,6 +62,21 @@ const server = createServer(async (request, response) => {
     const dispatchMatch = path.match(/^\/api\/service-requests\/([^/]+)\/dispatch$/);
     if (dispatchMatch && request.method === 'POST') {
       return json(response, 201, await dispatch.run(data.user.id, dispatchMatch[1]!, await body(request)));
+    }
+
+    if (path === '/api/providers' && request.method === 'GET') {
+      return json(response, 200, await portal.providers());
+    }
+
+    if (path === '/api/provider/jobs' && request.method === 'GET') {
+      const providerId = url.searchParams.get('provider_id');
+      if (!providerId) throw new HttpError(400, 'Invalid request fields');
+      return json(response, 200, await portal.jobs(providerId));
+    }
+
+    const respondMatch = path.match(/^\/api\/provider\/jobs\/([^/]+)\/respond$/);
+    if (respondMatch && request.method === 'POST') {
+      return json(response, 201, await portal.respond(respondMatch[1]!, await body(request)));
     }
 
     throw new HttpError(404, 'Route not found');
