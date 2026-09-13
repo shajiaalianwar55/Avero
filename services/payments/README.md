@@ -1,3 +1,61 @@
 # Payments
 
 Boundary for sandbox payment protection and transaction state transitions.
+
+## B-07 Payment protection and deposit
+
+Implemented in the provider app (in-process sandbox — no Stripe / live card capture):
+
+- `POST /api/bookings/:id/payment-intent` — creates an `authorized` deposit intent from the booking `price_basis` (optional `{ method, amount }` override)
+- `POST /api/payments/:id/confirm` — sandbox confirm → `protected` with receipt reference
+- Auth: Bearer token; caller must own the booking / payment (`user_id`)
+- Stable payment ids `pay_<booking_id>`; intent retries are idempotent while the booking is `pending_payment`
+- Writes `payments` + `payment_events` (`intent_created`, `confirmed`)
+- On confirm: booking → `confirmed`, service request → `booked`
+- Every payment payload includes `protection_label: "Payment protected by Avero"`, `sandbox: true`, and `sandbox_disclosure: "Sandbox payment — not legal escrow"`
+- Does **not** call the flow legal escrow
+
+See also: `services/marketplace/README.md` (B-06 booking creates `pending_payment` jobs that this flow confirms).
+
+## B-08 Final bill, approval, and payout state
+
+API-first sandbox completion on top of the same deposit `payments` row (no second payment row; no Stripe):
+
+- `POST /api/bookings/:id/final-bill` — body `{ lines: [{ kind, description, amount }], currency?, notes? }`
+- `POST /api/bookings/:id/approve-final-bill` — homeowner approves; remaining balance settled in sandbox
+- `POST /api/bookings/:id/complete` — requires approved + paid; booking/SR → `completed`; payment → `payout_released`
+- Auth: Bearer ownership of the booking
+- Stable final bill ids `fb_<booking_id>`; submit/approve/complete are idempotent once recorded
+- `remaining_balance = max(0, total_amount - protected deposit_amount)`
+- Writes `final_bills`; updates `payments` + `payment_events` (`remaining_settled`, `payout_released`)
+- On submit: booking → `awaiting_customer_approval`
+- On complete: automatically creates one C-01 `repair_records` row (`rr_<booking_id>`) — see `services/history/README.md`
+- Review / warranty after complete: see B-10 below
+
+## B-09 Disputes and cancellation protection
+
+Sandbox dispute path for no-show / contested jobs (no Stripe refunds):
+
+- `POST /api/bookings/:id/disputes` — body `{ category: "no_show" | "quality" | "other", note }`
+- `GET /api/disputes/:id` — owned dispute
+- Eligible when booking is `confirmed` (or in-progress / awaiting bill/approval) and deposit is `protected`
+- Sets booking + payment + service request to `disputed`; appends `payment_events.dispute_opened`
+- Does **not** complete the job, set payment to `paid` / `payout_released`, or create a C-01 repair record
+- Stable ids `dsp_<booking_id>`; open is idempotent
+- Returns `funds_action_recommendation` + `admin_needed` (deterministic; always admin-needed for MVP)
+- Rejects completed/cancelled/settled bookings
+- Does not implement B-10 reviews
+
+## B-10 Review and warranty capture
+
+API-first capture after B-08 completion (does not redesign C-01 `RepairRecordContract`):
+
+- `POST /api/bookings/:id/review` — body `{ rating: 1-5, comment? }`
+- `GET /api/reviews/:id` — owned review
+- `GET /api/warranties/:id` — owned warranty (for later history / warranty reuse)
+- Auth: Bearer ownership of the completed booking
+- Eligible only when `booking.status = completed`
+- Writes `reviews` + `warranties`; stable ids `rev_<booking_id>` / `war_<booking_id>`; submit is idempotent
+- Warranty dates come from the accepted offer `warranty_days` relative to completion time (`warranty_start`, `warranty_end`, `warranty_terms`)
+- Response includes `review_id`, `warranty_start`, `warranty_end`, `warranty_terms`
+- Does not implement C-02/C-03/C-04 or provider aggregate reputation recompute
