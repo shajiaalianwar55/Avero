@@ -71,3 +71,4 @@ Implemented in the provider app:
 - Payment deposit/confirm: see `services/payments/README.md` (B-07)
 - Final bill / approve / complete: see `services/payments/README.md` (B-08)
 - Repair record on complete: see `services/history/README.md` (C-01)
+- Review / warranty after complete: see `services/payments/README.md` (B-10)

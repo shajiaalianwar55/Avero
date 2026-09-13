@@ -9,4 +9,5 @@ export * from "./offer.js";
 export * from "./payment.js";
 export * from "./provider.js";
 export * from "./repair-record.js";
+export * from "./review.js";
 export * from "./service-request.js";

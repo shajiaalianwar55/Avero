@@ -30,7 +30,7 @@ API-first sandbox completion on top of the same deposit `payments` row (no secon
 - Writes `final_bills`; updates `payments` + `payment_events` (`remaining_settled`, `payout_released`)
 - On submit: booking → `awaiting_customer_approval`
 - On complete: automatically creates one C-01 `repair_records` row (`rr_<booking_id>`) — see `services/history/README.md`
-- Does not implement reviews (B-10)
+- Review / warranty after complete: see B-10 below
 
 ## B-09 Disputes and cancellation protection
 
@@ -45,3 +45,17 @@ Sandbox dispute path for no-show / contested jobs (no Stripe refunds):
 - Returns `funds_action_recommendation` + `admin_needed` (deterministic; always admin-needed for MVP)
 - Rejects completed/cancelled/settled bookings
 - Does not implement B-10 reviews
+
+## B-10 Review and warranty capture
+
+API-first capture after B-08 completion (does not redesign C-01 `RepairRecordContract`):
+
+- `POST /api/bookings/:id/review` — body `{ rating: 1-5, comment? }`
+- `GET /api/reviews/:id` — owned review
+- `GET /api/warranties/:id` — owned warranty (for later history / warranty reuse)
+- Auth: Bearer ownership of the completed booking
+- Eligible only when `booking.status = completed`
+- Writes `reviews` + `warranties`; stable ids `rev_<booking_id>` / `war_<booking_id>`; submit is idempotent
+- Warranty dates come from the accepted offer `warranty_days` relative to completion time (`warranty_start`, `warranty_end`, `warranty_terms`)
+- Response includes `review_id`, `warranty_start`, `warranty_end`, `warranty_terms`
+- Does not implement C-02/C-03/C-04 or provider aggregate reputation recompute

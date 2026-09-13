@@ -12,6 +12,7 @@ import { Booking } from './booking.js';
 import { Payment } from './payment.js';
 import { FinalBill } from './final-bill.js';
 import { Dispute } from './dispute.js';
+import { Review } from './review.js';
 import { body, json } from './http.js';
 
 try {
@@ -30,6 +31,7 @@ const booking = new Booking(db);
 const payment = new Payment(db);
 const finalBill = new FinalBill(db);
 const dispute = new Dispute(db);
+const review = new Review(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 const staticFiles: Record<string, [string, string]> = {
   '/': ['index.html', 'text/html'],
@@ -150,6 +152,21 @@ const server = createServer(async (request, response) => {
     const getDisputeMatch = path.match(/^\/api\/disputes\/([^/]+)$/);
     if (getDisputeMatch && request.method === 'GET') {
       return json(response, 200, await dispute.get(data.user.id, getDisputeMatch[1]!));
+    }
+
+    const submitReviewMatch = path.match(/^\/api\/bookings\/([^/]+)\/review$/);
+    if (submitReviewMatch && request.method === 'POST') {
+      return json(response, 201, await review.submit(data.user.id, submitReviewMatch[1]!, await body(request)));
+    }
+
+    const getReviewMatch = path.match(/^\/api\/reviews\/([^/]+)$/);
+    if (getReviewMatch && request.method === 'GET') {
+      return json(response, 200, await review.get(data.user.id, getReviewMatch[1]!));
+    }
+
+    const getWarrantyMatch = path.match(/^\/api\/warranties\/([^/]+)$/);
+    if (getWarrantyMatch && request.method === 'GET') {
+      return json(response, 200, await review.getWarranty(data.user.id, getWarrantyMatch[1]!));
     }
 
     throw new HttpError(404, 'Route not found');
