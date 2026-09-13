@@ -11,6 +11,7 @@ import { Ranking } from './ranking.js';
 import { Booking } from './booking.js';
 import { Payment } from './payment.js';
 import { FinalBill } from './final-bill.js';
+import { Dispute } from './dispute.js';
 import { body, json } from './http.js';
 
 try {
@@ -28,6 +29,7 @@ const ranking = new Ranking(db);
 const booking = new Booking(db);
 const payment = new Payment(db);
 const finalBill = new FinalBill(db);
+const dispute = new Dispute(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 const staticFiles: Record<string, [string, string]> = {
   '/': ['index.html', 'text/html'],
@@ -138,6 +140,16 @@ const server = createServer(async (request, response) => {
     const completeMatch = path.match(/^\/api\/bookings\/([^/]+)\/complete$/);
     if (completeMatch && request.method === 'POST') {
       return json(response, 200, await finalBill.complete(data.user.id, completeMatch[1]!, await body(request)));
+    }
+
+    const openDisputeMatch = path.match(/^\/api\/bookings\/([^/]+)\/disputes$/);
+    if (openDisputeMatch && request.method === 'POST') {
+      return json(response, 201, await dispute.open(data.user.id, openDisputeMatch[1]!, await body(request)));
+    }
+
+    const getDisputeMatch = path.match(/^\/api\/disputes\/([^/]+)$/);
+    if (getDisputeMatch && request.method === 'GET') {
+      return json(response, 200, await dispute.get(data.user.id, getDisputeMatch[1]!));
     }
 
     throw new HttpError(404, 'Route not found');

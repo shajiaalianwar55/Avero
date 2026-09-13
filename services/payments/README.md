@@ -30,4 +30,18 @@ API-first sandbox completion on top of the same deposit `payments` row (no secon
 - Writes `final_bills`; updates `payments` + `payment_events` (`remaining_settled`, `payout_released`)
 - On submit: booking → `awaiting_customer_approval`
 - On complete: automatically creates one C-01 `repair_records` row (`rr_<booking_id>`) — see `services/history/README.md`
-- Does not implement disputes (B-09) or reviews (B-10)
+- Does not implement reviews (B-10)
+
+## B-09 Disputes and cancellation protection
+
+Sandbox dispute path for no-show / contested jobs (no Stripe refunds):
+
+- `POST /api/bookings/:id/disputes` — body `{ category: "no_show" | "quality" | "other", note }`
+- `GET /api/disputes/:id` — owned dispute
+- Eligible when booking is `confirmed` (or in-progress / awaiting bill/approval) and deposit is `protected`
+- Sets booking + payment + service request to `disputed`; appends `payment_events.dispute_opened`
+- Does **not** complete the job, set payment to `paid` / `payout_released`, or create a C-01 repair record
+- Stable ids `dsp_<booking_id>`; open is idempotent
+- Returns `funds_action_recommendation` + `admin_needed` (deterministic; always admin-needed for MVP)
+- Rejects completed/cancelled/settled bookings
+- Does not implement B-10 reviews

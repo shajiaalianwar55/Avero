@@ -1,6 +1,7 @@
 export * from "./ai.js";
 export * from "./booking.js";
 export * from "./customer.js";
+export * from "./dispute.js";
 export * from "./evidence.js";
 export * from "./enums.js";
 export * from "./final-bill.js";
