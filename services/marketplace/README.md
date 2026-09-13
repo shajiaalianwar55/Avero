@@ -1,6 +1,6 @@
 # Marketplace
 
-Boundary for provider discovery, dispatch, quote normalization, and offer ranking.
+Boundary for provider discovery, dispatch, quote normalization, offer ranking, and bookings.
 
 ## B-01 Provider discovery
 
@@ -57,3 +57,15 @@ Implemented in the provider app:
 - Persists a stable snapshot `rank_<service_request_id>` in `offer_rankings`
 - Empty set → `recommended_offer_id: null`, `execution_state: abstained`
 - Does not implement booking (B-06) or customer comparison UI
+
+## B-06 Booking lifecycle
+
+- `POST /api/bookings` — body `{ offer_id, appointment_window, notes? }`; creates `pending_payment` booking
+- `GET /api/bookings/:id` — owned booking by the authenticated user
+- `POST /api/bookings/:id/cancel` — cancels unless `completed` / `disputed`; frees the request for a new selection
+- Auth: Bearer token; caller must own the linked service request / booking
+- Stable ids `bk_<service_request_id>_<offer_id>`; same offer retry is idempotent
+- One non-cancelled booking per service request (409 if another offer is selected while active)
+- Confirmed price basis prefers `visit_fee`, then `estimated_total_min`, else `unspecified`
+- Marks the service request `selected` on create; restore `offers_received` on cancel
+- Does not implement payment (B-07), final bill (B-08), or repair records (C-01)

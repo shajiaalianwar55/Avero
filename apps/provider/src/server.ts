@@ -8,6 +8,7 @@ import { Dispatch } from './dispatch.js';
 import { Portal } from './portal.js';
 import { Normalize } from './normalize.js';
 import { Ranking } from './ranking.js';
+import { Booking } from './booking.js';
 import { body, json } from './http.js';
 
 try {
@@ -22,6 +23,7 @@ const dispatch = new Dispatch(db);
 const portal = new Portal(db, dispatch);
 const normalize = new Normalize(db);
 const ranking = new Ranking(db);
+const booking = new Booking(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 const staticFiles: Record<string, [string, string]> = {
   '/': ['index.html', 'text/html'],
@@ -92,6 +94,21 @@ const server = createServer(async (request, response) => {
     if (normalizeMatch && request.method === 'POST') {
       await body(request);
       return json(response, 200, await normalize.run(data.user.id, normalizeMatch[1]!));
+    }
+
+    if (path === '/api/bookings' && request.method === 'POST') {
+      return json(response, 201, await booking.create(data.user.id, await body(request)));
+    }
+
+    const bookingMatch = path.match(/^\/api\/bookings\/([^/]+)$/);
+    if (bookingMatch && request.method === 'GET') {
+      return json(response, 200, await booking.get(data.user.id, bookingMatch[1]!));
+    }
+
+    const cancelMatch = path.match(/^\/api\/bookings\/([^/]+)\/cancel$/);
+    if (cancelMatch && request.method === 'POST') {
+      await body(request);
+      return json(response, 200, await booking.cancel(data.user.id, cancelMatch[1]!));
     }
 
     throw new HttpError(404, 'Route not found');
