@@ -70,4 +70,4 @@ Implemented in the provider app:
 - Marks the service request `selected` on create; restore `offers_received` on cancel
 - Payment deposit/confirm: see `services/payments/README.md` (B-07)
 - Final bill / approve / complete: see `services/payments/README.md` (B-08)
-- Does not implement repair records (C-01)
+- Repair record on complete: see `services/history/README.md` (C-01)

@@ -29,4 +29,5 @@ API-first sandbox completion on top of the same deposit `payments` row (no secon
 - `remaining_balance = max(0, total_amount - protected deposit_amount)`
 - Writes `final_bills`; updates `payments` + `payment_events` (`remaining_settled`, `payout_released`)
 - On submit: booking → `awaiting_customer_approval`
-- Does not generate repair records (C-01), disputes (B-09), or reviews (B-10)
+- On complete: automatically creates one C-01 `repair_records` row (`rr_<booking_id>`) — see `services/history/README.md`
+- Does not implement disputes (B-09) or reviews (B-10)

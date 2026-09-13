@@ -11,6 +11,7 @@ import {
 } from '@avero/contracts';
 import { HttpError, type Database, type Row } from './database.js';
 import { paymentEventId, PROTECTION_LABEL, SANDBOX_DISCLOSURE } from './payment.js';
+import { RepairRecord } from './repair-record.js';
 
 /** Stable id so final-bill retries upsert the same row per booking. */
 export function finalBillId(bookingId: string) {
@@ -38,7 +39,10 @@ function sumLines(lines: { amount: number }[]) {
 }
 
 export class FinalBill {
-  constructor(readonly db: Database) {}
+  constructor(
+    readonly db: Database,
+    readonly repairRecords = new RepairRecord(db),
+  ) {}
 
   async submit(userId: string, bookingId: string, raw: unknown): Promise<FinalBillContract> {
     const input = SubmitFinalBillInputSchema.parse(raw);
@@ -191,7 +195,10 @@ export class FinalBill {
     const billRow = (await this.db.list('final_bills', { booking_id: bookingId, user_id: userId }))[0];
     if (!billRow) throw new HttpError(404, 'Record not found');
     const bill = toFinalBill(billRow);
-    if (bill.payout_state === 'released' && booking.status === 'completed') return bill;
+    if (bill.payout_state === 'released' && booking.status === 'completed') {
+      await this.repairRecords.ensureForCompletedBooking(userId, bookingId);
+      return bill;
+    }
 
     if (bill.approval_status !== 'approved') {
       throw new HttpError(409, 'Final bill must be approved before completion');
@@ -250,6 +257,7 @@ export class FinalBill {
 
     await this.updateBookingStatus(bookingRow, booking, 'completed', now);
     await this.markRequestCompleted(booking, now);
+    await this.repairRecords.ensureForCompletedBooking(userId, bookingId);
     return completed;
   }
 
