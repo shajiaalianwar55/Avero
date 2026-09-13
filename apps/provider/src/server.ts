@@ -9,6 +9,7 @@ import { Portal } from './portal.js';
 import { Normalize } from './normalize.js';
 import { Ranking } from './ranking.js';
 import { Booking } from './booking.js';
+import { Payment } from './payment.js';
 import { body, json } from './http.js';
 
 try {
@@ -24,6 +25,7 @@ const portal = new Portal(db, dispatch);
 const normalize = new Normalize(db);
 const ranking = new Ranking(db);
 const booking = new Booking(db);
+const payment = new Payment(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 const staticFiles: Record<string, [string, string]> = {
   '/': ['index.html', 'text/html'],
@@ -109,6 +111,16 @@ const server = createServer(async (request, response) => {
     if (cancelMatch && request.method === 'POST') {
       await body(request);
       return json(response, 200, await booking.cancel(data.user.id, cancelMatch[1]!));
+    }
+
+    const paymentIntentMatch = path.match(/^\/api\/bookings\/([^/]+)\/payment-intent$/);
+    if (paymentIntentMatch && request.method === 'POST') {
+      return json(response, 201, await payment.intent(data.user.id, paymentIntentMatch[1]!, await body(request)));
+    }
+
+    const paymentConfirmMatch = path.match(/^\/api\/payments\/([^/]+)\/confirm$/);
+    if (paymentConfirmMatch && request.method === 'POST') {
+      return json(response, 200, await payment.confirm(data.user.id, paymentConfirmMatch[1]!, await body(request)));
     }
 
     throw new HttpError(404, 'Route not found');

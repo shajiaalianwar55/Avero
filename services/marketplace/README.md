@@ -68,4 +68,5 @@ Implemented in the provider app:
 - One non-cancelled booking per service request (409 if another offer is selected while active)
 - Confirmed price basis prefers `visit_fee`, then `estimated_total_min`, else `unspecified`
 - Marks the service request `selected` on create; restore `offers_received` on cancel
-- Does not implement payment (B-07), final bill (B-08), or repair records (C-01)
+- Payment deposit/confirm: see `services/payments/README.md` (B-07)
+- Does not implement final bill (B-08) or repair records (C-01)
