@@ -69,4 +69,5 @@ Implemented in the provider app:
 - Confirmed price basis prefers `visit_fee`, then `estimated_total_min`, else `unspecified`
 - Marks the service request `selected` on create; restore `offers_received` on cancel
 - Payment deposit/confirm: see `services/payments/README.md` (B-07)
-- Does not implement final bill (B-08) or repair records (C-01)
+- Final bill / approve / complete: see `services/payments/README.md` (B-08)
+- Does not implement repair records (C-01)

@@ -10,6 +10,7 @@ import { Normalize } from './normalize.js';
 import { Ranking } from './ranking.js';
 import { Booking } from './booking.js';
 import { Payment } from './payment.js';
+import { FinalBill } from './final-bill.js';
 import { body, json } from './http.js';
 
 try {
@@ -26,6 +27,7 @@ const normalize = new Normalize(db);
 const ranking = new Ranking(db);
 const booking = new Booking(db);
 const payment = new Payment(db);
+const finalBill = new FinalBill(db);
 const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
 const staticFiles: Record<string, [string, string]> = {
   '/': ['index.html', 'text/html'],
@@ -121,6 +123,21 @@ const server = createServer(async (request, response) => {
     const paymentConfirmMatch = path.match(/^\/api\/payments\/([^/]+)\/confirm$/);
     if (paymentConfirmMatch && request.method === 'POST') {
       return json(response, 200, await payment.confirm(data.user.id, paymentConfirmMatch[1]!, await body(request)));
+    }
+
+    const finalBillMatch = path.match(/^\/api\/bookings\/([^/]+)\/final-bill$/);
+    if (finalBillMatch && request.method === 'POST') {
+      return json(response, 201, await finalBill.submit(data.user.id, finalBillMatch[1]!, await body(request)));
+    }
+
+    const approveBillMatch = path.match(/^\/api\/bookings\/([^/]+)\/approve-final-bill$/);
+    if (approveBillMatch && request.method === 'POST') {
+      return json(response, 200, await finalBill.approve(data.user.id, approveBillMatch[1]!, await body(request)));
+    }
+
+    const completeMatch = path.match(/^\/api\/bookings\/([^/]+)\/complete$/);
+    if (completeMatch && request.method === 'POST') {
+      return json(response, 200, await finalBill.complete(data.user.id, completeMatch[1]!, await body(request)));
     }
 
     throw new HttpError(404, 'Route not found');
