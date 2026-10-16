@@ -1,16 +1,191 @@
-import { createServer } from "node:http";
+import { createServer } from 'node:http';
+import { readFile } from 'node:fs/promises';
+import { fileURLToPath } from 'node:url';
+import { z } from 'zod';
+import { configuredDatabase, HttpError } from './database.js';
+import { Discover } from './discover.js';
+import { Dispatch } from './dispatch.js';
+import { Portal } from './portal.js';
+import { Normalize } from './normalize.js';
+import { Ranking } from './ranking.js';
+import { Booking } from './booking.js';
+import { Payment } from './payment.js';
+import { FinalBill } from './final-bill.js';
+import { Dispute } from './dispute.js';
+import { Review } from './review.js';
+import { body, json } from './http.js';
 
-const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? "3001", 10);
+try {
+  process.loadEnvFile('.env');
+} catch {
+  /* deployment can supply environment */
+}
 
-createServer((request, response) => {
-  if (request.url === "/health") {
-    response.writeHead(200, { "content-type": "application/json" });
-    response.end(JSON.stringify({ app: "provider", status: "ok" }));
-    return;
+const db = configuredDatabase();
+const discover = new Discover(db);
+const dispatch = new Dispatch(db);
+const portal = new Portal(db, dispatch);
+const normalize = new Normalize(db);
+const ranking = new Ranking(db);
+const booking = new Booking(db);
+const payment = new Payment(db);
+const finalBill = new FinalBill(db);
+const dispute = new Dispute(db);
+const review = new Review(db);
+const port = Number.parseInt(process.env.PROVIDER_APP_PORT ?? '3001', 10);
+const staticFiles: Record<string, [string, string]> = {
+  '/': ['index.html', 'text/html'],
+  '/app.js': ['app.js', 'text/javascript'],
+  '/style.css': ['style.css', 'text/css'],
+};
+
+const server = createServer(async (request, response) => {
+  try {
+    const url = new URL(request.url ?? '/', 'http://localhost');
+    const path = url.pathname;
+
+    if (path === '/health') {
+      response.writeHead(200, { 'content-type': 'application/json' });
+      response.end(JSON.stringify({ app: 'provider', status: 'ok' }));
+      return;
+    }
+
+    if (path === '/api/config') {
+      return json(response, 200, {
+        url: process.env.SUPABASE_URL,
+        key: process.env.SUPABASE_PUBLISHABLE_KEY || process.env.SUPABASE_ANON_KEY,
+      });
+    }
+
+    const asset = staticFiles[path];
+    if (asset && request.method === 'GET') {
+      const content = await readFile(fileURLToPath(new URL(`../public/${asset[0]}`, import.meta.url)));
+      response.writeHead(200, { 'content-type': asset[1], 'x-content-type-options': 'nosniff' });
+      return response.end(content);
+    }
+
+    const token = request.headers.authorization?.match(/^Bearer (.+)$/)?.[1];
+    if (!token) throw new HttpError(401, 'Sign in to continue');
+    const { data, error } = await db.client.auth.getUser(token);
+    if (error || !data.user) throw new HttpError(401, 'Session expired. Sign in again.');
+
+    if (path === '/api/marketplace/discover' && request.method === 'POST') {
+      return json(response, 200, await discover.run(data.user.id, await body(request)));
+    }
+
+    const dispatchMatch = path.match(/^\/api\/service-requests\/([^/]+)\/dispatch$/);
+    if (dispatchMatch && request.method === 'POST') {
+      return json(response, 201, await dispatch.run(data.user.id, dispatchMatch[1]!, await body(request)));
+    }
+
+    const rankedMatch = path.match(/^\/api\/service-requests\/([^/]+)\/ranked-offers$/);
+    if (rankedMatch && request.method === 'GET') {
+      return json(response, 200, await ranking.run(data.user.id, rankedMatch[1]!));
+    }
+
+    if (path === '/api/providers' && request.method === 'GET') {
+      return json(response, 200, await portal.providers());
+    }
+
+    if (path === '/api/provider/jobs' && request.method === 'GET') {
+      const providerId = url.searchParams.get('provider_id');
+      if (!providerId) throw new HttpError(400, 'Invalid request fields');
+      return json(response, 200, await portal.jobs(providerId));
+    }
+
+    const respondMatch = path.match(/^\/api\/provider\/jobs\/([^/]+)\/respond$/);
+    if (respondMatch && request.method === 'POST') {
+      return json(response, 201, await portal.respond(respondMatch[1]!, await body(request)));
+    }
+
+    const normalizeMatch = path.match(/^\/api\/offers\/([^/]+)\/normalize$/);
+    if (normalizeMatch && request.method === 'POST') {
+      await body(request);
+      return json(response, 200, await normalize.run(data.user.id, normalizeMatch[1]!));
+    }
+
+    if (path === '/api/bookings' && request.method === 'POST') {
+      return json(response, 201, await booking.create(data.user.id, await body(request)));
+    }
+
+    const bookingMatch = path.match(/^\/api\/bookings\/([^/]+)$/);
+    if (bookingMatch && request.method === 'GET') {
+      return json(response, 200, await booking.get(data.user.id, bookingMatch[1]!));
+    }
+
+    const cancelMatch = path.match(/^\/api\/bookings\/([^/]+)\/cancel$/);
+    if (cancelMatch && request.method === 'POST') {
+      await body(request);
+      return json(response, 200, await booking.cancel(data.user.id, cancelMatch[1]!));
+    }
+
+    const paymentIntentMatch = path.match(/^\/api\/bookings\/([^/]+)\/payment-intent$/);
+    if (paymentIntentMatch && request.method === 'POST') {
+      return json(response, 201, await payment.intent(data.user.id, paymentIntentMatch[1]!, await body(request)));
+    }
+
+    const paymentConfirmMatch = path.match(/^\/api\/payments\/([^/]+)\/confirm$/);
+    if (paymentConfirmMatch && request.method === 'POST') {
+      return json(response, 200, await payment.confirm(data.user.id, paymentConfirmMatch[1]!, await body(request)));
+    }
+
+    const finalBillMatch = path.match(/^\/api\/bookings\/([^/]+)\/final-bill$/);
+    if (finalBillMatch && request.method === 'POST') {
+      return json(response, 201, await finalBill.submit(data.user.id, finalBillMatch[1]!, await body(request)));
+    }
+
+    const approveBillMatch = path.match(/^\/api\/bookings\/([^/]+)\/approve-final-bill$/);
+    if (approveBillMatch && request.method === 'POST') {
+      return json(response, 200, await finalBill.approve(data.user.id, approveBillMatch[1]!, await body(request)));
+    }
+
+    const completeMatch = path.match(/^\/api\/bookings\/([^/]+)\/complete$/);
+    if (completeMatch && request.method === 'POST') {
+      return json(response, 200, await finalBill.complete(data.user.id, completeMatch[1]!, await body(request)));
+    }
+
+    const openDisputeMatch = path.match(/^\/api\/bookings\/([^/]+)\/disputes$/);
+    if (openDisputeMatch && request.method === 'POST') {
+      return json(response, 201, await dispute.open(data.user.id, openDisputeMatch[1]!, await body(request)));
+    }
+
+    const getDisputeMatch = path.match(/^\/api\/disputes\/([^/]+)$/);
+    if (getDisputeMatch && request.method === 'GET') {
+      return json(response, 200, await dispute.get(data.user.id, getDisputeMatch[1]!));
+    }
+
+    const submitReviewMatch = path.match(/^\/api\/bookings\/([^/]+)\/review$/);
+    if (submitReviewMatch && request.method === 'POST') {
+      return json(response, 201, await review.submit(data.user.id, submitReviewMatch[1]!, await body(request)));
+    }
+
+    const getReviewMatch = path.match(/^\/api\/reviews\/([^/]+)$/);
+    if (getReviewMatch && request.method === 'GET') {
+      return json(response, 200, await review.get(data.user.id, getReviewMatch[1]!));
+    }
+
+    const getWarrantyMatch = path.match(/^\/api\/warranties\/([^/]+)$/);
+    if (getWarrantyMatch && request.method === 'GET') {
+      return json(response, 200, await review.getWarranty(data.user.id, getWarrantyMatch[1]!));
+    }
+
+    throw new HttpError(404, 'Route not found');
+  } catch (error) {
+    json(
+      response,
+      error instanceof HttpError ? error.status : error instanceof z.ZodError ? 400 : 500,
+      {
+        error:
+          error instanceof HttpError
+            ? error.message
+            : error instanceof z.ZodError
+              ? 'Invalid request fields'
+              : 'Unexpected server error',
+      },
+    );
   }
+});
 
-  response.writeHead(200, { "content-type": "text/plain; charset=utf-8" });
-  response.end("Avero provider app skeleton\n");
-}).listen(port, () => {
-  console.log(`Provider app listening on http://localhost:${port}`);
+server.listen(port, '127.0.0.1', () => {
+  console.log(`Provider app listening on http://127.0.0.1:${port}`);
 });
